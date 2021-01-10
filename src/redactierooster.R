@@ -8,6 +8,7 @@ library(yaml)
 library(purrr)
 library(futile.logger)
 library(jsonlite)
+library(readr)
 
 flog.appender(appender.file("/Users/nipper/Logs/redactierooster.log"), name = "redactieroosterlog")
 flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterlog")
@@ -15,7 +16,7 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2020-02-04")
+current_run_start <- ymd("2021-02-04")
 flog.info("Dit rooster start op %s", 
           format(current_run_start, "%A %d %B %Y"),
           name = "redactieroosterlog")
@@ -24,7 +25,9 @@ flog.info("Dit rooster start op %s",
 # but to the schedule-template both Thursdays are the same, as the
 # template is undated.
 # Both Thursday parts will separate when the schedule gets 'calendarized'
-current_run_stop <- current_run_start + ddays(14)
+
+# Set last day -------------------------------------------
+current_run_stop <- current_run_start + ddays(8 * 7)
 
 source("src/get_google_czdata.R")
 flog.info("Google-data ingelezen", name = "redactieroosterlog")
@@ -250,91 +253,21 @@ for (seg1 in 1:1) { # make break-able segment
     rename(genre_EN1 = item_EN) %>% 
     left_join(tbl_wpgidsinfo_nl_en, by = c("genre_NL2" = "item_NL")) %>% 
     rename(genre_EN2 = item_EN) %>% 
-    mutate(json_start = date_time,
-           json_stop = date_time + dminutes(as.integer(size))) %>% 
+    mutate(weekdag = 1 + (day(date_time) - 1) %/% 7L,
+           date_time = format(date_time, format="%A %Y-%m-%d %H.00")
+   ) %>% 
     select(date_time,
-           json_start,
-           json_stop,
-           hh_offset_dag,
-           hh_offset_uur,
            size,
+           weekdag,
            titel_NL,
-           titel_EN,
            genre_NL1,
-           genre_EN1,
            genre_NL2,
-           genre_EN2,
-           intro_NL,
-           intro_EN,
-           productie_taak,
-           productie_taak_EN,
            productie_mdw
     )
-  
-  broadcasts_orig <- broadcasts.I %>% 
-    select(-hh_offset_dag, -hh_offset_uur, -size)
-  
-  broadcasts_repeat.I <- broadcasts.I %>% 
-    filter(!is.na(hh_offset_dag)) %>% 
-    mutate(json_start = json_start + ddays(as.integer(hh_offset_dag)))
-  
-  hour(broadcasts_repeat.I$json_start) <- broadcasts_repeat.I$hh_offset_uur
-  
-  broadcasts_repeat.II <- broadcasts_repeat.I %>% 
-    mutate(json_stop = json_start + dminutes(as.integer(size)))
-  
-  broadcasts_repeat <- broadcasts_repeat.II %>% 
-    select(-hh_offset_dag, -hh_offset_uur, -size) 
-  
-  broadcasts_repeat$titel_NL <- NA_character_
-  broadcasts_repeat$titel_EN <- NA_character_
-  broadcasts_repeat$genre_NL1 <- NA_character_
-  broadcasts_repeat$genre_NL2 <- NA_character_
-  broadcasts_repeat$genre_EN1 <- NA_character_
-  broadcasts_repeat$genre_EN2 <- NA_character_
-  broadcasts_repeat$intro_NL <- NA_character_
-  broadcasts_repeat$intro_EN <- NA_character_
-  broadcasts_repeat$productie_taak <- NA_character_
-  broadcasts_repeat$productie_taak_EN <- NA_character_
-  broadcasts_repeat$productie_mdw <- NA_character_
-  
-  broadcasts.II <- bind_rows(broadcasts_orig, broadcasts_repeat) %>% 
-    arrange(date_time)
-  
-  broadcasts.III <- broadcasts.II %>% 
-    mutate(herhalingVan = if_else(is.na(titel_NL), 
-                                  format(date_time,"%Y-%m-%d %H:%M"),
-                                  NA_character_),
-           # if_else doesn't play nicely with dates set to NA
-           # herhalingVan = replace(x = herhalingVan, !is.na(titel_NL), NA),
-           # nv_ts: name/value-pair timestamp, in front of pgm's nv-pair set
-           nv_ts = if_else(!is.na(titel_NL), date_time, json_start)
-    ) %>% 
-    select(nv_ts,
-           json_start,
-           json_stop,
-           herhalingVan,
-           titel_NL,
-           titel_EN,
-           genre_NL1,
-           genre_EN1,
-           genre_NL2,
-           genre_EN2,
-           intro_NL,
-           intro_EN,
-           productie_taak,
-           productie_taak_EN,
-           productie_mdw
-    )
-  
-  
-  # bc_subset <- broadcasts.III %>% filter(row_number() < 10) 
-  broadcasts <- broadcasts.III %>%
-    mutate(nv_ts = fmt_utc_ts(nv_ts),
-           json_start = format(json_start, "%Y-%m-%d %H:%M"),
-           json_stop = format(json_stop, "%Y-%m-%d %H:%M")
-    )
-  
-  rm(broadcasts_orig, broadcasts_repeat, broadcasts_repeat.I, broadcasts_repeat.II,
-     broadcasts.I, broadcasts.II, broadcasts.III)
 }
+
+# save as .tsv ----
+write_tsv(broadcasts.I, 
+          file = "C:/Users/nipper/redactieroosters/alle_redacties.tsv",
+          na = ""
+)
