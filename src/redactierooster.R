@@ -27,7 +27,7 @@ flog.info("Dit rooster start op %s",
 # Both Thursday parts will separate when the schedule gets 'calendarized'
 
 # Set last day -------------------------------------------
-current_run_stop <- current_run_start + ddays(8 * 7)
+current_run_stop <- current_run_start + ddays(12 * 7)
 
 source("src/get_google_czdata.R")
 flog.info("Google-data ingelezen", name = "redactieroosterlog")
@@ -253,21 +253,37 @@ for (seg1 in 1:1) { # make break-able segment
     rename(genre_EN1 = item_EN) %>% 
     left_join(tbl_wpgidsinfo_nl_en, by = c("genre_NL2" = "item_NL")) %>% 
     rename(genre_EN2 = item_EN) %>% 
-    mutate(weekdag = 1 + (day(date_time) - 1) %/% 7L,
-           date_time = format(date_time, format="%A %Y-%m-%d %H.00")
+    mutate(rang_int = 1 + (day(date_time) - 1) %/% 7L,
+           rang_nr = paste0(rang_int, "e"),
+           uitzending_start_md = format(date_time, format="%a %e %b"),
+           uitzending_start_h = format(date_time, format="%H"),
+           uitzending_stop_h = format(date_time + dminutes(as.integer(size)), format="%H"),
+           uitzending = paste0(rang_nr, 
+                               " ", 
+                               uitzending_start_md, 
+                               "   ", 
+                               uitzending_start_h, 
+                               "-", 
+                               uitzending_stop_h)
+           
    ) %>% 
-    select(date_time,
-           size,
-           weekdag,
-           titel_NL,
-           genre_NL1,
-           genre_NL2,
-           productie_mdw
+    select(uitzending,
+           titel = titel_NL,
+           redactie = genre_NL1,
+           genre = genre_NL2,
+           redacteur = productie_mdw
     )
 }
 
+broadcasts.2 <- broadcasts.I %>% 
+  mutate(cz_week_start = if_else(str_detect(uitzending, "do.+ 13-14"), rank(row_number()), NA_real_),
+         cz_week_rank = if_else(str_detect(uitzending, "do.+ 13-14"), rank(cz_week_start), NA_real_)) %>% 
+  fill(cz_week_rank) %>% 
+  mutate(cz_week_banding = cz_week_rank %% 2) %>% 
+  select(-c(cz_week_start:cz_week_rank))
+
 # save as .tsv ----
-write_tsv(broadcasts.I, 
+write_tsv(broadcasts.2, 
           file = "C:/Users/nipper/redactieroosters/alle_redacties.tsv",
           na = ""
 )
