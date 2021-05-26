@@ -16,7 +16,7 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2021-02-04")
+current_run_start <- ymd("2021-04-29")
 flog.info("Dit rooster start op %s", 
           format(current_run_start, "%A %d %B %Y"),
           name = "redactieroosterlog")
@@ -269,6 +269,7 @@ for (seg1 in 1:1) { # make break-able segment
    ) %>% 
     select(uitzending,
            titel = titel_NL,
+           mr_key = cz_slot_value,
            redactie = genre_NL1,
            genre = genre_NL2,
            redacteur = productie_mdw
@@ -282,8 +283,19 @@ broadcasts.2 <- broadcasts.I %>%
   mutate(cz_week_banding = cz_week_rank %% 2) %>% 
   select(-c(cz_week_start:cz_week_rank))
 
+source("src/fetch_gidslinks.R", encoding = "UTF-8")
+
+broadcasts.3 <- broadcasts.2 %>% 
+  left_join(gidslinks) %>% 
+  mutate(titel = paste0("=HYPERLINK(\"https://www.concertzender.nl/programma_genre/",
+                        gids_url_sfx,
+                        "/\"; \"",
+                        titel,
+                        "\")")) %>% 
+  select(cz_week_banding, uitzending, titel, redactie:redacteur)
+
 # save as .tsv ----
-write_tsv(broadcasts.2, 
-          file = "C:/Users/nipper/redactieroosters/alle_redacties.tsv",
+write_tsv(broadcasts.3, 
+          file = paste0("C:/Users/nipper/redactieroosters/alle_redacties_", current_run_start, ".tsv"),
           na = ""
 )
