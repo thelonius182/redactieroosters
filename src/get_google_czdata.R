@@ -5,7 +5,7 @@ library(yaml)
 
 cz_extract_sheet <- function(ss_name, sheet_name) {
   read_xlsx(ss_name,
-            sheet = sheet_name,
+            sheet = sheet_name, 
             .name_repair = ~ ifelse(nzchar(.x), .x, LETTERS[seq_along(.x)]))
 }
 
@@ -30,9 +30,13 @@ drive_download(file = cz_get_url("itunes_cupboard"), overwrite = T, path = path_
 path_wp_gidsinfo <- paste0(config$gs_downloads, "/", "wordpress_gidsinfo.xlsx")
 drive_download(file = cz_get_url("wordpress_gidsinfo"), overwrite = T, path = path_wp_gidsinfo)
 
-# Nipper-spreadsheet ophalen bij GD
-path_wp_nipper_express <- paste0(config$gs_downloads, "/", "nipper_express.xlsx")
-drive_download(file = cz_get_url("nipper_express"), overwrite = T, path = path_wp_nipper_express)
+# redacteuren van Gerard
+path_redacteuren_hedendaags <- paste0(config$gs_downloads, "/", "redacteuren_hedendaags.xlsx")
+drive_download(file = cz_get_url("redacteuren_hedendaags"), overwrite = T, path = path_redacteuren_hedendaags)
+# 
+# # Nipper-spreadsheet ophalen bij GD
+# path_wp_nipper_express <- paste0(config$gs_downloads, "/", "nipper_express.xlsx")
+# drive_download(file = cz_get_url("nipper_express"), overwrite = T, path = path_wp_nipper_express)
 
 # sheets als df -----------------------------------------------------------
 
@@ -42,11 +46,12 @@ tbl_raw_montage <- cz_extract_sheet(path_roosters, sheet_name = "montage")
 tbl_raw_itunes_cupboard <- cz_extract_sheet(path_itunes_cupboard, sheet_name = "playlist_names")
 tbl_raw_wpgidsinfo <- cz_extract_sheet(path_wp_gidsinfo, sheet_name = "gids-info")
 tbl_raw_wpgidsinfo_nl_en <- cz_extract_sheet(path_wp_gidsinfo, sheet_name = "vertalingen NL-EN")
+tbl_raw_redacteuren_hedendaags <- cz_extract_sheet(path_redacteuren_hedendaags, sheet_name = config$tab_redacteuren_hedendaags)
 
-tbl_nipper_playlists <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "playlists")
-tbl_nipper_select <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "nipper-select")
-tbl_nipper_keys <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "programma_sleutels")
-tbl_nipper_audiolocaties <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "audio_locaties")
+# tbl_nipper_playlists <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "playlists")
+# tbl_nipper_select <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "nipper-select")
+# tbl_nipper_keys <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "programma_sleutels")
+# tbl_nipper_audiolocaties <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "audio_locaties")
 
 # refactor raw tables -----------------------------------------------------
 

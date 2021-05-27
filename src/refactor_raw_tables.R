@@ -91,6 +91,10 @@ tbl_wpgidsinfo_nl_en <- tbl_raw_wpgidsinfo_nl_en %>%
          item_EN = `item-EN`) %>% 
   arrange(item_NL)
 
+# Redacteuren van Gerard -------------------------------------------------
+
+tbl_redacteuren_hedendaags <- tbl_raw_redacteuren_hedendaags
+
 
 # Opruimen ----------------------------------------------------------------
 
@@ -100,5 +104,6 @@ rm(
   tbl_raw_montage,
   tbl_raw_itunes_cupboard,
   tbl_raw_wpgidsinfo,
-  tbl_raw_wpgidsinfo_nl_en
+  tbl_raw_wpgidsinfo_nl_en,
+  tbl_raw_redacteuren_hedendaags
 )
