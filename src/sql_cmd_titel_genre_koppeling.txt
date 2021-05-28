@@ -1,0 +1,16 @@
+select po1.post_title as pgmTitle,
+       te1.slug as kvValue,
+       count(*) as n_episodes
+from wp_posts po1 
+   left join wp_term_relationships tr1 
+          on tr1.object_id = po1.id
+   left join wp_term_taxonomy tx1 
+          on tx1.term_taxonomy_id= tr1.term_taxonomy_id
+   left join wp_terms te1 
+          on te1.term_id = tr1.term_taxonomy_id
+where length(po1.post_title) > 2
+  and tx1.taxonomy = 'programma_genre'
+  and te1.slug not in ('crosslinks', 'crosslinks-en', 'wereldmuziek')
+  and (te1.slug regexp('.*__.*nl$') or po1.post_title regexp('Klangen|Mariama'))
+group by po1.post_title, te1.slug
+order by 1

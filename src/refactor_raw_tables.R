@@ -93,7 +93,13 @@ tbl_wpgidsinfo_nl_en <- tbl_raw_wpgidsinfo_nl_en %>%
 
 # Redacteuren van Gerard -------------------------------------------------
 
-tbl_redacteuren_hedendaags <- tbl_raw_redacteuren_hedendaags
+redacteuren_hedendaags_by_day <- tbl_raw_redacteuren_hedendaags %>% 
+  mutate(hour = str_pad(as.character(hour), pad = "0", width = 2, side = "left")) %>% 
+  filter(day_rank > 0)
+
+redacteuren_hedendaags_by_editor <- tbl_raw_redacteuren_hedendaags %>% 
+  mutate(hour = str_pad(as.character(hour), pad = "0", width = 2, side = "left")) %>% 
+  filter(day_rank == 0)
 
 
 # Opruimen ----------------------------------------------------------------

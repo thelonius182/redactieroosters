@@ -227,6 +227,8 @@ suppressWarnings(
     select(cz_slot_pfx, hh_offset_dag, hh_offset_uur) 
 )
 
+# + even TOT HIER ----
+
 # + join the lot ----
 for (seg1 in 1:1) { # make break-able segment
   
@@ -241,6 +243,13 @@ for (seg1 in 1:1) { # make break-able segment
               na_infos_df, name = "redactieroosterlog")
     break
   }
+  
+  # get editor refs ----
+  # for editor selection Hedendaags
+  hd_editors_day <- redacteuren_hedendaags_by_editor$day[1]
+  hd_editors_hour <- redacteuren_hedendaags_by_editor$hour[1]
+  hd_editors_title <- redacteuren_hedendaags_by_editor$title[1]
+  hd_editors_start_ymd <- redacteuren_hedendaags_by_editor$starts_at[1]
   
   broadcasts.I <- cz_slot_dates %>% 
     inner_join(cz_week_titles) %>% 
@@ -269,13 +278,20 @@ for (seg1 in 1:1) { # make break-able segment
                                uitzending_start_h, 
                                "-", 
                                uitzending_stop_h)
-           
-   ) %>% 
+    ) %>% 
+    left_join(redacteuren_hedendaags_by_day, 
+              by = c("uitzending_start_d" = "day", 
+                     "rang_int" = "day_rank",
+                     "uitzending_start_h" = "hour")) %>% 
+    mutate(editor = if_else(uitzending_start_d == hd_editors_day
+                            & uitzending_start_h == hd_editors_hour
+                            & titel_NL == hd_editors_title,
+                            hd_editor(hd_editors_start_ymd, date_time),
+                            editor))
     select(uitzending,
            titel = titel_NL,
            mr_key = cz_slot_value,
            redactie = genre_NL1,
-           genre = genre_NL2,
            redacteur = productie_mdw
     )
 }
