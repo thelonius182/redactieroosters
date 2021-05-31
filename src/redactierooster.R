@@ -286,6 +286,7 @@ for (seg1 in 1:1) { # make break-able segment
                      "rang_int" = "cz_week",
                      "uitzending_start_h" = "uur")) %>% 
     left_join(hd_red_joins, by = c("date_time" = "date_time")) %>% 
+    arrange(date_time) %>% 
     mutate(redacteur = case_when(!is.na(redacteur.y) ~ redacteur.y,
                                  !is.na(redacteur.x) ~ redacteur.x,
                                  T ~ productie_mdw)
@@ -314,7 +315,11 @@ broadcasts.3 <- broadcasts.2 %>%
                         "/\"; \"",
                         titel,
                         "\")")) %>% 
-  select(cz_week_banding, uitzending, titel, redactie:redacteur)
+  select(cz_week_banding, uitzending, titel, redactie:redacteur) %>% 
+  mutate(redactie = case_when(redactie == "Oude Muziek" ~ "Oud", 
+                              redactie == "Culturele Raakvlakken" ~ "Raakvlakken", 
+                              redactie == "Nieuwe Muziek" ~ "Hedendaags",
+                              T ~ redactie))
 
 # save as .tsv ----
 write_tsv(broadcasts.3, 
