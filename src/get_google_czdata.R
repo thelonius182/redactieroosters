@@ -4,7 +4,7 @@ library(readxl)
 library(yaml)
 
 cz_extract_sheet <- function(ss_name, sheet_name) {
-  read_xlsx(ss_name,
+  readxl::read_xlsx(ss_name,
             sheet = sheet_name, 
             .name_repair = ~ ifelse(nzchar(.x), .x, LETTERS[seq_along(.x)]))
 }
@@ -16,7 +16,7 @@ cz_get_url <- function(cz_ss) {
 
 # downloads GD ------------------------------------------------------------
 
-# aanmelden bij GD loopt via de procedure die beschreven is in "Operation Missa > Voortgang > 4.Toegangsrechten GD".
+# aanmelden bij GD loopt via gargle, zoals beschreven in "Operation Missa > Voortgang > 4.Toegangsrechten GD".
 
 # Roosters 3.0 ophalen bij GD
 path_roosters <- paste0(config$gs_downloads, "/", "roosters.xlsx")
@@ -48,25 +48,6 @@ tbl_raw_wpgidsinfo <- cz_extract_sheet(path_wp_gidsinfo, sheet_name = "gids-info
 tbl_raw_wpgidsinfo_nl_en <- cz_extract_sheet(path_wp_gidsinfo, sheet_name = "vertalingen NL-EN")
 tbl_raw_redacteuren_hedendaags <- cz_extract_sheet(path_redacteuren_hedendaags, sheet_name = config$tab_redacteuren_hedendaags)
 
-# tbl_nipper_playlists <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "playlists")
-# tbl_nipper_select <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "nipper-select")
-# tbl_nipper_keys <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "programma_sleutels")
-# tbl_nipper_audiolocaties <- cz_extract_sheet(path_wp_nipper_express, sheet_name = "audio_locaties")
-
 # refactor raw tables -----------------------------------------------------
 
 source("src/refactor_raw_tables.R")
-
-# persist refactored tbles ------------------------------------------------
-
-# saveRDS(tbl_zenderschema, file = paste0(config$cz_rds_store, "zenderschema.RDS"))
-# saveRDS(tbl_presentatie, file = paste0(config$cz_rds_store, "presentatie.RDS"))
-# saveRDS(tbl_montage, file = paste0(config$cz_rds_store, "montage.RDS"))
-# saveRDS(tbl_itunes_cupboard, file = paste0(config$cz_rds_store, "itunes_cupboard.RDS"))
-# saveRDS(tbl_wpgidsinfo, file = paste0(config$cz_rds_store, "gidsinfo.RDS"))
-# saveRDS(tbl_wpgidsinfo_nl_en, file = paste0(config$cz_rds_store, "gidsinfo_nl_en.RDS"))
-# 
-# saveRDS(tbl_nipper_playlists, file = paste0(config$cz_rds_store, "nipper_playlists.RDS"))
-# saveRDS(tbl_nipper_select, file = paste0(config$cz_rds_store, "nipper_select.RDS"))
-# saveRDS(tbl_nipper_keys, file = paste0(config$cz_rds_store, "nipper_keys.RDS"))
-# saveRDS(tbl_nipper_audiolocaties, file = paste0(config$cz_rds_store, "nipper_audiolocaties.RDS"))

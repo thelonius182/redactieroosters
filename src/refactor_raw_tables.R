@@ -93,23 +93,12 @@ tbl_wpgidsinfo_nl_en <- tbl_raw_wpgidsinfo_nl_en %>%
 
 # Redacteuren van Gerard -------------------------------------------------
 
-redacteuren_hedendaags_by_day <- tbl_raw_redacteuren_hedendaags %>% 
-  mutate(hour = str_pad(as.character(hour), pad = "0", width = 2, side = "left")) %>% 
-  filter(day_rank > 0)
+redacteuren_hedendaags_czw <- tbl_raw_redacteuren_hedendaags %>% 
+  mutate(uur = str_pad(as.character(uur), pad = "0", width = 2, side = "left")) %>% 
+  filter(is.na(wisselt)) %>% 
+  select(dag, uur, cz_week, redacteur)
 
-redacteuren_hedendaags_by_editor <- tbl_raw_redacteuren_hedendaags %>% 
-  mutate(hour = str_pad(as.character(hour), pad = "0", width = 2, side = "left")) %>% 
-  filter(day_rank == 0)
-
-
-# Opruimen ----------------------------------------------------------------
-
-rm(
-  tbl_raw_zenderschema,
-  tbl_raw_presentatie,
-  tbl_raw_montage,
-  tbl_raw_itunes_cupboard,
-  tbl_raw_wpgidsinfo,
-  tbl_raw_wpgidsinfo_nl_en,
-  tbl_raw_redacteuren_hedendaags
-)
+redacteuren_hedendaags_lst <- tbl_raw_redacteuren_hedendaags %>% 
+  mutate(uur = str_pad(as.character(uur), pad = "0", width = 2, side = "left")) %>% 
+  filter(!is.na(wisselt)) %>% 
+  select(dag, uur, cz_week, wisselt, start_op, redacteur)

@@ -30,6 +30,12 @@ flog.info("Dit rooster start op %s",
 current_run_stop <- current_run_start + ddays(12 * 7)
 
 source("src/get_google_czdata.R")
+
+# Opruimen raw tables -----------------------------------------------------
+
+rm(tbl_raw_itunes_cupboard, tbl_raw_montage, tbl_raw_presentatie, tbl_raw_redacteuren_hedendaags,
+   tbl_raw_wpgidsinfo, tbl_raw_wpgidsinfo_nl_en, tbl_raw_zenderschema)
+
 flog.info("Google-data ingelezen", name = "redactieroosterlog")
 
 # create time series ------------------------------------------------------
@@ -244,13 +250,8 @@ for (seg1 in 1:1) { # make break-able segment
     break
   }
   
-  # get editor refs ----
-  # for editor selection Hedendaags
-  hd_editors_day <- redacteuren_hedendaags_by_editor$day[1]
-  hd_editors_hour <- redacteuren_hedendaags_by_editor$hour[1]
-  hd_editors_title <- redacteuren_hedendaags_by_editor$title[1]
-  hd_editors_start_ymd <- redacteuren_hedendaags_by_editor$starts_at[1]
-  
+  source(file = "src/red_hd_calendar.R", encoding = "UTF-8")
+
   broadcasts.I <- cz_slot_dates %>% 
     inner_join(cz_week_titles) %>% 
     inner_join(cz_week_sizes) %>% 
@@ -278,21 +279,22 @@ for (seg1 in 1:1) { # make break-able segment
                                uitzending_start_h, 
                                "-", 
                                uitzending_stop_h)
+           # genre_NL1 = if_else(genre_NL1 == "Modern", "Hedendaags", genre_NL1)
     ) %>% 
-    left_join(redacteuren_hedendaags_by_day, 
-              by = c("uitzending_start_d" = "day", 
-                     "rang_int" = "day_rank",
-                     "uitzending_start_h" = "hour")) %>% 
-    mutate(editor = if_else(uitzending_start_d == hd_editors_day
-                            & uitzending_start_h == hd_editors_hour
-                            & titel_NL == hd_editors_title,
-                            hd_editor(hd_editors_start_ymd, date_time),
-                            editor))
+    left_join(redacteuren_hedendaags_czw, 
+              by = c("uitzending_start_d" = "dag", 
+                     "rang_int" = "cz_week",
+                     "uitzending_start_h" = "uur")) %>% 
+    left_join(hd_red_joins, by = c("date_time" = "date_time")) %>% 
+    mutate(redacteur = case_when(!is.na(redacteur.y) ~ redacteur.y,
+                                 !is.na(redacteur.x) ~ redacteur.x,
+                                 T ~ productie_mdw)
+           ) %>% 
     select(uitzending,
            titel = titel_NL,
            mr_key = cz_slot_value,
-           redactie = genre_NL1,
-           redacteur = productie_mdw
+           redactie = redactie_NL,
+           redacteur
     )
 }
 
