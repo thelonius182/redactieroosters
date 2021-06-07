@@ -192,7 +192,7 @@ hour(df_start) <- 13
 df_stop <- max(cz_slot_dates$date_time)
 hour(df_stop) <- 13
 
-cz_slot_dates <- cz_slot_dates_raw %>% 
+cz_slot_dates.1 <- cz_slot_dates_raw %>% 
   filter(date_time >= df_start & date_time < df_stop)
 
 rm(cz_slot_dates_raw)
@@ -201,128 +201,181 @@ rm(cz_slot_dates_raw)
 
 # join dates, slots & info ------------------------------------------------
 # + get cycle for A/B-week ------------------------------------------------
-cycle <- get_cycle(current_run_start)
+# cycle <- get_cycle(current_run_start)
 
-#+ get iTunes-repeats --------------------------------------------------
-itunes_repeat_slots <- cz_week %>% 
-  filter(cz_slot_key == paste0("product ", cycle) & cz_slot_value == "h") %>% 
+cz_slot_dates.2 <- cz_slot_dates.1 %>% 
+  mutate(a_b_week = if_else(str_detect(cz_slot_pfx, "do._13"), get_cycle(date_time), NA_character_)) %>% 
+  fill(a_b_week, .direction = "down")
+
+#+ get biweekly repeats --------------------------------------------------
+biweekly_repeats.1 <- cz_week %>% 
+  filter(cz_slot_key == "herhaling" & cz_slot_value == "tw") %>% 
   select(cz_slot_pfx)
 
+biweekly_repeats.2 <- biweekly_repeats.1 %>% 
+  left_join(cz_week) %>% 
+  filter(str_starts(cz_slot_key, "prod"))
+
+cz_slot_dates.3 <- cz_slot_dates.2 %>% 
+  left_join(biweekly_repeats.2) %>% 
+  mutate(cz_slot_key = str_replace(cz_slot_key, "product ", ""),
+         a_b_week_match = if_else(a_b_week == cz_slot_key, T, F)) %>% 
+  filter(is.na(cz_slot_key) | a_b_week_match & cz_slot_value != "h") %>% 
+  select(date_time, cz_slot_pfx)
+
 #+... join on 'titel', exclude on itunes-repeat ----
-cz_week_titles <- cz_week %>% 
+cz_week_titles <- cz_week %>%
   filter(cz_slot_key == "titel") %>% 
-  anti_join(itunes_repeat_slots)
+  select(-cz_slot_key)
 
 #+ get sizes of each program ----
-cz_week_sizes <- cz_week %>% 
-  filter(cz_slot_key == "size") %>% 
+cz_week_sizes <- cz_week %>%
+  filter(cz_slot_key == "size") %>%
   select(cz_slot_pfx, size = cz_slot_value)
 
-#+ get regular repeats ----
-suppressWarnings(
-  cz_week_repeats <- cz_week %>%
-    filter(cz_slot_key == "herhaling") %>%
-    mutate(
-      hh_offset_dag = if_else(cz_slot_value == "tw", 
-                              7L, 
-                              as.integer(str_sub(cz_slot_value, 1, 2))),
-      hh_offset_uur = if_else(cz_slot_value == "tw", 
-                              as.integer(str_sub(cz_slot_pfx, 5, 6)),
-                              as.integer(str_sub(cz_slot_value, 5, 6)))
-    ) %>%
-    select(cz_slot_pfx, hh_offset_dag, hh_offset_uur) 
-)
+# #+ get regular repeats ----
+# suppressWarnings(
+#   cz_week_repeats <- cz_week %>%
+#     filter(cz_slot_key == "herhaling") %>%
+#     mutate(
+#       hh_offset_dag = if_else(cz_slot_value == "tw", 
+#                               7L, 
+#                               as.integer(str_sub(cz_slot_value, 1, 2))),
+#       hh_offset_uur = if_else(cz_slot_value == "tw", 
+#                               as.integer(str_sub(cz_slot_pfx, 5, 6)),
+#                               as.integer(str_sub(cz_slot_value, 5, 6)))
+#     ) %>%
+#     select(cz_slot_pfx, hh_offset_dag, hh_offset_uur) 
+# )
 
 # + even TOT HIER ----
 
 # + join the lot ----
-for (seg1 in 1:1) { # make break-able segment
+for (seg1 in 1:1) {
+  # make break-able segment
   
   #+... but test for missing info's first! ------------------------------------
-  na_infos <- cz_week_titles %>% 
+  na_infos <- cz_week_titles %>%
     anti_join(tbl_wpgidsinfo, by = c("cz_slot_value" = "key_modelrooster")) %>%
     select(cz_slot_value) %>% distinct
   
   if (nrow(na_infos) > 0) {
-    na_infos_df <- unite(data = na_infos, col = regel, sep = " ")
-    flog.info("WP-gidsinfo is incompleet. Geen vermelding voor %s\nscript wordt afgebroken.", 
-              na_infos_df, name = "redactieroosterlog")
+    na_infos_df <- unite(data = na_infos,
+                         col = regel,
+                         sep = " ")
+    flog.info(
+      "WP-gidsinfo is incompleet. Geen vermelding voor %s\nscript wordt afgebroken.",
+      na_infos_df,
+      name = "redactieroosterlog"
+    )
     break
   }
   
   source(file = "src/red_hd_calendar.R", encoding = "UTF-8")
-
-  broadcasts.I <- cz_slot_dates %>% 
-    inner_join(cz_week_titles) %>% 
-    inner_join(cz_week_sizes) %>% 
-    left_join(cz_week_repeats) %>% 
-    inner_join(tbl_wpgidsinfo, by = c("cz_slot_value" = "key_modelrooster")) %>% 
-    left_join(tbl_wpgidsinfo_nl_en, by = c("productie_taak" = "item_NL")) %>% 
-    rename(productie_taak_EN = item_EN) %>% 
-    left_join(tbl_wpgidsinfo_nl_en, by = c("genre_NL1" = "item_NL")) %>% 
-    rename(genre_EN1 = item_EN) %>% 
-    left_join(tbl_wpgidsinfo_nl_en, by = c("genre_NL2" = "item_NL")) %>% 
-    rename(genre_EN2 = item_EN) %>% 
-    mutate(rang_int = 1 + (day(date_time) - 1) %/% 7L,
-           rang_nr = paste0(rang_int, "e"),
-           uitzending_start_d = format(date_time, format="%a"),
-           uitzending_start_m = format(date_time, format="%e %b"),
-           uitzending_start_h = format(date_time, format="%H"),
-           uitzending_stop_h = format(date_time + dminutes(as.integer(size)), format="%H"),
-           uitzending_stop_h = if_else(uitzending_stop_h == "00", "24", uitzending_stop_h),
-           uitzending = paste0(rang_nr, 
-                               " ", 
-                               uitzending_start_d, 
-                               " ", 
-                               uitzending_start_m, 
-                               "   ", 
-                               uitzending_start_h, 
-                               "-", 
-                               uitzending_stop_h)
-           # genre_NL1 = if_else(genre_NL1 == "Modern", "Hedendaags", genre_NL1)
-    ) %>% 
-    left_join(redacteuren_hedendaags_czw, 
-              by = c("uitzending_start_d" = "dag", 
-                     "rang_int" = "cz_week",
-                     "uitzending_start_h" = "uur")) %>% 
-    left_join(hd_red_joins, by = c("date_time" = "date_time")) %>% 
-    arrange(date_time) %>% 
+  
+  broadcasts.I <- cz_slot_dates.3 %>%
+    inner_join(cz_week_titles) %>%
+    inner_join(cz_week_sizes) %>%
+    # left_join(cz_week_repeats) %>%
+    inner_join(tbl_wpgidsinfo, by = c("cz_slot_value" = "key_modelrooster")) %>%
+    left_join(tbl_wpgidsinfo_nl_en, by = c("productie_taak" = "item_NL")) %>%
+    rename(productie_taak_EN = item_EN) %>%
+    left_join(tbl_wpgidsinfo_nl_en, by = c("genre_NL1" = "item_NL")) %>%
+    rename(genre_EN1 = item_EN) %>%
+    left_join(tbl_wpgidsinfo_nl_en, by = c("genre_NL2" = "item_NL")) %>%
+    rename(genre_EN2 = item_EN) %>%
+    mutate(
+      rang_int = 1 + (day(date_time) - 1) %/% 7L,
+      rang_nr = paste0(rang_int, "e"),
+      uitzending_start_d = format(date_time, format = "%a"),
+      uitzending_start_m = format(date_time, format = "%e %b"),
+      uitzending_start_h = format(date_time, format = "%H"),
+      uitzending_stop_h = format(date_time + dminutes(as.integer(size)), format =
+                                   "%H"),
+      uitzending_stop_h = if_else(uitzending_stop_h == "00", "24", uitzending_stop_h),
+      uitzending = paste0(
+        rang_nr,
+        " ",
+        uitzending_start_d,
+        " ",
+        uitzending_start_m,
+        "   ",
+        uitzending_start_h,
+        "-",
+        uitzending_stop_h
+      )
+      # genre_NL1 = if_else(genre_NL1 == "Modern", "Hedendaags", genre_NL1)
+    ) %>%
+    left_join(
+      redacteuren_hedendaags_czw,
+      by = c(
+        "uitzending_start_d" = "dag",
+        "rang_int" = "cz_week",
+        "uitzending_start_h" = "uur"
+      )
+    ) %>%
+    left_join(hd_red_joins, by = c("date_time" = "date_time")) %>%
+    arrange(date_time) %>%
     mutate(redacteur = case_when(!is.na(redacteur.y) ~ redacteur.y,
                                  !is.na(redacteur.x) ~ redacteur.x,
                                  T ~ productie_mdw)
-           ) %>% 
-    select(uitzending,
-           titel = titel_NL,
-           mr_key = cz_slot_value,
-           redactie = redactie_NL,
-           redacteur
+    ) %>%
+    select(
+      uitzending,
+      titel = titel_NL,
+      mr_key = cz_slot_value,
+      redactie = redactie_NL,
+      redacteur
     )
+  
+  broadcasts.2 <- broadcasts.I %>%
+    mutate(
+      cz_week_start = if_else(
+        str_detect(uitzending, "do.+ 13-14"),
+        rank(row_number()),
+        NA_real_
+      ),
+      cz_week_rank = if_else(
+        str_detect(uitzending, "do.+ 13-14"),
+        rank(cz_week_start),
+        NA_real_
+      )
+    ) %>%
+    fill(cz_week_rank) %>%
+    mutate(cz_week_banding = cz_week_rank %% 2) %>%
+    select(-c(cz_week_start:cz_week_rank))
+  
+  source("src/fetch_gidslinks.R", encoding = "UTF-8")
+  
+  broadcasts.3 <- broadcasts.2 %>%
+    left_join(gidslinks) %>%
+    mutate(
+      titel = paste0(
+        "=HYPERLINK(\"https://www.concertzender.nl/programma_genre/",
+        gids_url_sfx,
+        "/\"; \"",
+        titel,
+        "\")"
+      )
+    ) %>%
+    select(cz_week_banding, uitzending, titel, redactie:redacteur) %>%
+    mutate(
+      redactie = case_when(
+        redactie == "Oude Muziek" ~ "Oud",
+        redactie == "Culturele Raakvlakken" ~ "Raakvlakken",
+        redactie == "Nieuwe Muziek" ~ "Hedendaags",
+        T ~ redactie
+      )
+    )
+  
+  # save as .tsv ----
+  write_tsv(
+    broadcasts.3,
+    file = paste0(
+      "C:/Users/nipper/redactieroosters/alle_redacties_",
+      current_run_start,
+      ".tsv"
+    ),
+    na = ""
+  )
 }
-
-broadcasts.2 <- broadcasts.I %>% 
-  mutate(cz_week_start = if_else(str_detect(uitzending, "do.+ 13-14"), rank(row_number()), NA_real_),
-         cz_week_rank = if_else(str_detect(uitzending, "do.+ 13-14"), rank(cz_week_start), NA_real_)) %>% 
-  fill(cz_week_rank) %>% 
-  mutate(cz_week_banding = cz_week_rank %% 2) %>% 
-  select(-c(cz_week_start:cz_week_rank))
-
-source("src/fetch_gidslinks.R", encoding = "UTF-8")
-
-broadcasts.3 <- broadcasts.2 %>% 
-  left_join(gidslinks) %>% 
-  mutate(titel = paste0("=HYPERLINK(\"https://www.concertzender.nl/programma_genre/",
-                        gids_url_sfx,
-                        "/\"; \"",
-                        titel,
-                        "\")")) %>% 
-  select(cz_week_banding, uitzending, titel, redactie:redacteur) %>% 
-  mutate(redactie = case_when(redactie == "Oude Muziek" ~ "Oud", 
-                              redactie == "Culturele Raakvlakken" ~ "Raakvlakken", 
-                              redactie == "Nieuwe Muziek" ~ "Hedendaags",
-                              T ~ redactie))
-
-# save as .tsv ----
-write_tsv(broadcasts.3, 
-          file = paste0("C:/Users/nipper/redactieroosters/alle_redacties_", current_run_start, ".tsv"),
-          na = ""
-)

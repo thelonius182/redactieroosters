@@ -63,9 +63,10 @@ prep_week <- function(week_nr) {
 }
 
 get_cycle <- function(cz_week_start) {
-  # test: cz_week_start <- "2019-11-21"
+  # cz_week_start <- ymd_hms("2021-07-08 13:00:00")
+  cz_week_start_ymd <- cz_week_start %>% as.Date.POSIXct
   ref_date_B_cycle <- ymd("2019-10-17")
-  i_diff <- as.integer(cz_week_start - ref_date_B_cycle) %/% 7L
+  i_diff <- as.integer(cz_week_start_ymd - ref_date_B_cycle) / 7L
   if_else(i_diff %% 2 == 0, "B", "A")
 }
 
