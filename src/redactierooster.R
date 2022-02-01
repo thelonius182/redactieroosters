@@ -16,7 +16,11 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2021-04-29")
+current_run_start <- ymd("2022-02-03")
+
+# prev run ends with rank (cz_week_banding) ----
+last_rank <- 1 
+
 flog.info("Dit rooster start op %s", 
           format(current_run_start, "%A %d %B %Y"),
           name = "redactieroosterlog")
@@ -328,17 +332,20 @@ for (seg1 in 1:1) {
       redacteur
     )
   
+  # + rank it ----
   broadcasts.2 <- broadcasts.I %>%
     mutate(
       cz_week_start = if_else(
-        str_detect(uitzending, "do.+ 13-14"),
+        str_detect(uitzending, "do.+13-") |
+          str_detect(uitzending, "do.+14-") &
+          !str_detect(lag(uitzending), "do.+13-"),
         rank(row_number()),
         NA_real_
       ),
       cz_week_rank = if_else(
-        str_detect(uitzending, "do.+ 13-14"),
-        rank(cz_week_start),
-        NA_real_
+        is.na(cz_week_start),
+        NA_real_,
+        last_rank + rank(cz_week_start)
       )
     ) %>%
     fill(cz_week_rank) %>%
