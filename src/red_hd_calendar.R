@@ -1,4 +1,4 @@
-cal_start_ti <- redacteuren_hedendaags_lst %>% 
+cal_start_ti <- redacteur_carrousel_lst %>% 
   filter(!is.na(start_op)) %>% 
   mutate(start_op = min(start_op)) %>% 
   select(start_op) %>% distinct()
@@ -27,7 +27,7 @@ hd_red_dates_raw <- as.data.frame(hd_red_dates) %>%
   ) %>%
   arrange(date_time)
 
-hd_red_wissels <- redacteuren_hedendaags_lst %>% 
+hd_red_wissels <- redacteur_carrousel_lst %>% 
   filter(!is.na(start_op)) %>% 
   mutate(itm = row_number())
 
@@ -36,10 +36,10 @@ hd_red_joins <- NULL
 for (h1 in hd_red_wissels$itm) {
   wissel <- hd_red_wissels %>% filter(itm == h1)
   
-  # redacteurencaroussel
+  # redacteur_caroussel
   if (is.na(wissel$cz_week)) {
     
-    redacteurnamen <- redacteuren_hedendaags_lst %>% 
+    redacteurnamen <- redacteur_carrousel_lst %>% 
       filter(is.na(cz_week)) %>% 
       mutate(rid = row_number()) %>% 
       select(rid, redacteur)
@@ -60,7 +60,7 @@ for (h1 in hd_red_wissels$itm) {
     
   } else {
     
-    redacteurnamen <- redacteuren_hedendaags_lst %>% 
+    redacteurnamen <- redacteur_carrousel_lst %>% 
       filter(dag == wissel$dag
              & uur == wissel$uur
              & cz_week == wissel$cz_week) %>% 

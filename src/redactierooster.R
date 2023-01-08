@@ -16,7 +16,7 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2022-07-21")
+current_run_start <- ymd("2023-01-05")
 
 # prev run ends with rank (cz_week_banding) ----
 last_rank <- 1 
@@ -37,7 +37,7 @@ source("src/get_google_czdata.R")
 
 # Opruimen raw tables -----------------------------------------------------
 
-rm(tbl_raw_itunes_cupboard, tbl_raw_montage, tbl_raw_presentatie, tbl_raw_redacteuren_hedendaags,
+rm(tbl_raw_itunes_cupboard, tbl_raw_montage, tbl_raw_presentatie, tbl_raw_redacteur_carrousel,
    tbl_raw_wpgidsinfo, tbl_raw_wpgidsinfo_nl_en, tbl_raw_zenderschema)
 
 flog.info("Google-data ingelezen", name = "redactieroosterlog")
@@ -311,7 +311,7 @@ for (seg1 in 1:1) {
       # genre_NL1 = if_else(genre_NL1 == "Modern", "Hedendaags", genre_NL1)
     ) %>%
     left_join(
-      redacteuren_hedendaags_czw,
+      redacteur_carrousel_czw,
       by = c(
         "uitzending_start_d" = "dag",
         "rang_int" = "cz_week",

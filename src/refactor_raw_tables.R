@@ -91,14 +91,14 @@ tbl_wpgidsinfo_nl_en <- tbl_raw_wpgidsinfo_nl_en %>%
          item_EN = `item-EN`) %>% 
   arrange(item_NL)
 
-# Redacteuren van Gerard -------------------------------------------------
+# Redacteur_carrousel -----------------------------------------------------
 
-redacteuren_hedendaags_czw <- tbl_raw_redacteuren_hedendaags %>% 
+redacteur_carrousel_czw <- tbl_raw_redacteur_carrousel %>% 
   mutate(uur = str_pad(as.character(uur), pad = "0", width = 2, side = "left")) %>% 
   filter(is.na(wisselt)) %>% 
   select(dag, uur, cz_week, redacteur)
 
-redacteuren_hedendaags_lst <- tbl_raw_redacteuren_hedendaags %>% 
+redacteur_carrousel_lst <- tbl_raw_redacteur_carrousel %>% 
   mutate(uur = str_pad(as.character(uur), pad = "0", width = 2, side = "left")) %>% 
   filter(!is.na(wisselt)) %>% 
   select(dag, uur, cz_week, wisselt, start_op, redacteur)

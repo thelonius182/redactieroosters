@@ -80,6 +80,6 @@ hd_editor <- function(ref_date, some_date) {
   # ref_date = ymd("2021-05-01")
   # some_date = ymd("2021-05-01")
   iv1 = interval(ref_date, some_date)
-  h1 = 1 + (int_length(iv1) / 3600 / 24) %% nrow(redacteuren_hedendaags_by_editor)
-  return(redacteuren_hedendaags_by_editor$editor[h1])
+  h1 = 1 + (int_length(iv1) / 3600 / 24) %% nrow(redacteur_carrousel_by_editor)
+  return(redacteur_carrousel_by_editor$editor[h1])
 }

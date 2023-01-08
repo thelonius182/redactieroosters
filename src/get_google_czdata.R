@@ -30,9 +30,9 @@ drive_download(file = cz_get_url("itunes_cupboard"), overwrite = T, path = path_
 path_wp_gidsinfo <- paste0(config$gs_downloads, "/", "wordpress_gidsinfo.xlsx")
 drive_download(file = cz_get_url("wordpress_gidsinfo"), overwrite = T, path = path_wp_gidsinfo)
 
-# redacteuren van Gerard
-path_redacteuren_hedendaags <- paste0(config$gs_downloads, "/", "redacteuren_hedendaags.xlsx")
-drive_download(file = cz_get_url("redacteuren_hedendaags"), overwrite = T, path = path_redacteuren_hedendaags)
+# redacteur_carrousel
+path_redacteur_carrousel <- paste0(config$gs_downloads, "/", "redacteur_carrousel.xlsx")
+drive_download(file = cz_get_url("redacteur_carrousel"), overwrite = T, path = path_redacteur_carrousel)
 # 
 # # Nipper-spreadsheet ophalen bij GD
 # path_wp_nipper_express <- paste0(config$gs_downloads, "/", "nipper_express.xlsx")
@@ -46,7 +46,7 @@ tbl_raw_montage <- cz_extract_sheet(path_roosters, sheet_name = "montage")
 tbl_raw_itunes_cupboard <- cz_extract_sheet(path_itunes_cupboard, sheet_name = "playlist_names")
 tbl_raw_wpgidsinfo <- cz_extract_sheet(path_wp_gidsinfo, sheet_name = "gids-info")
 tbl_raw_wpgidsinfo_nl_en <- cz_extract_sheet(path_wp_gidsinfo, sheet_name = "vertalingen NL-EN")
-tbl_raw_redacteuren_hedendaags <- cz_extract_sheet(path_redacteuren_hedendaags, sheet_name = config$tab_redacteuren_hedendaags)
+tbl_raw_redacteur_carrousel <- cz_extract_sheet(path_redacteur_carrousel, sheet_name = config$tab_redacteur_carrousel)
 
 # refactor raw tables -----------------------------------------------------
 
