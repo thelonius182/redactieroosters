@@ -1,14 +1,5 @@
-library(dplyr)
-library(tidyr)
-library(lubridate)
-library(magrittr)
-library(chron)
-library(stringr)
-library(yaml)
-library(purrr)
-library(futile.logger)
-library(jsonlite)
-library(readr)
+pacman::p_load(dplyr, tidyr, lubridate, magrittr, chron, stringr, yaml,
+               purrr, futile.logger, jsonlite, readr)
 
 flog.appender(appender.file("/Users/nipper/Logs/redactierooster.log"), name = "redactieroosterlog")
 flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterlog")
@@ -16,7 +7,7 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2023-01-05")
+current_run_start <- ymd("2023-09-14")
 
 # prev run ends with rank (cz_week_banding) ----
 last_rank <- 1 
