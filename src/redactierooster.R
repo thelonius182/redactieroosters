@@ -7,7 +7,7 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2023-09-14")
+current_run_start <- ymd("2023-12-07")
 
 # prev run ends with rank (cz_week_banding) ----
 last_rank <- 1 

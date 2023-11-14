@@ -56,8 +56,8 @@ for (seg1 in 1:1) { # creates an exitable flow
   tgk_db_raw <- tgk_db_rtv %>% 
     rename(titel_NL_db = pgmTitle, gids_url_sfx = kvValue) %>% 
     mutate(titel_NL_db = tolower(titel_NL_db),
-           titel_NL_db = if_else(titel_NL_db == "dr. klangendum", "dr-klangendum", titel_NL_db))
-  
+           titel_NL_db = if_else(titel_NL_db == "dr. klangendum", "dr-klangendum", titel_NL_db)) 
+
   on.exit(dbDisconnect(wp_conn))
 }
 
@@ -71,10 +71,11 @@ tgk_wp_raw <- tbl_wpgidsinfo %>%
   select(titel_NL_gd = titel_NL, mr_key = key_modelrooster, hoofdgenre = genre_NL1) %>% 
   mutate(titel_NL_gd = tolower(titel_NL_gd),
          titel_NL_gd = if_else(titel_NL_gd == "dr. klangendum", "dr-klangendum", titel_NL_gd),
-         hoofdgenre = tolower(hoofdgenre))
+         hoofdgenre = tolower(hoofdgenre),
+         hoofdgenre = if_else(titel_NL_gd == "kroniek van de nederlandse muziek", "raakvlakken", hoofdgenre))
 
 gidslinks <- tgk_wp_raw %>% 
-  left_join(tgk_db_raw, by = c("titel_NL_gd" = "titel_NL_db")) %>% 
+  left_join(tgk_db_raw, by = c("titel_NL_gd" = "titel_NL_db"), relationship = "many-to-many") %>% 
   mutate(select_this = (str_detect(gids_url_sfx, hoofdgenre) | str_detect(gids_url_sfx, titel_NL_gd))) %>% 
   filter(select_this) %>% 
   select(-titel_NL_gd) %>% 
