@@ -1,5 +1,5 @@
 pacman::p_load(dplyr, tidyr, lubridate, magrittr, chron, stringr, yaml,
-               purrr, futile.logger, jsonlite, readr)
+               purrr, futile.logger, jsonlite, readr, httr2)
 
 flog.appender(appender.file("/Users/nipper/Logs/redactierooster.log"), name = "redactieroosterlog")
 flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterlog")
@@ -7,13 +7,14 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2023-12-07")
+current_run_start <- ymd("2026-06-25") # donderdag!
 
 # prev run ends with rank (cz_week_banding) ----
-last_rank <- 1 
+last_rank <- 1
 
-flog.info("Dit rooster start op %s", 
+flog.info("Dit rooster start op %s (MR-versie %s)", 
           format(current_run_start, "%A %d %B %Y"),
+          config$modelrooster_versie,
           name = "redactieroosterlog")
 
 # cz-week's 168 hours span 8 weekdays, not 7 (Thursday AM and PM)
@@ -22,7 +23,7 @@ flog.info("Dit rooster start op %s",
 # Both Thursday parts will separate when the schedule gets 'calendarized'
 
 # Set last day -------------------------------------------
-current_run_stop <- current_run_start + ddays(12 * 7)
+current_run_stop <-  ymd("2026-10-08") # donderdag!
 
 source("src/get_google_czdata.R")
 
@@ -208,11 +209,11 @@ biweekly_repeats.1 <- cz_week %>%
   select(cz_slot_pfx)
 
 biweekly_repeats.2 <- biweekly_repeats.1 %>% 
-  left_join(cz_week) %>% 
+  left_join(cz_week, by = join_by(cz_slot_pfx)) %>% 
   filter(str_starts(cz_slot_key, "prod"))
 
 cz_slot_dates.3 <- cz_slot_dates.2 %>% 
-  left_join(biweekly_repeats.2) %>% 
+  left_join(biweekly_repeats.2, by = join_by(cz_slot_pfx), relationship = "many-to-many") %>% 
   mutate(cz_slot_key = str_replace(cz_slot_key, "product ", ""),
          a_b_week_match = if_else(a_b_week == cz_slot_key, T, F)) %>% 
   filter(is.na(cz_slot_key) | a_b_week_match & cz_slot_value != "h") %>% 
@@ -266,6 +267,7 @@ for (seg1 in 1:1) {
     break
   }
   
+  # red_hd = redactie hedendaags
   source(file = "src/red_hd_calendar.R", encoding = "UTF-8")
   
   broadcasts.I <- cz_slot_dates.3 %>%
@@ -298,7 +300,8 @@ for (seg1 in 1:1) {
         uitzending_start_h,
         "-",
         uitzending_stop_h
-      )
+      ),
+      uitzending_tijd = paste0(uitzending_start_h, "-", uitzending_stop_h)
       # genre_NL1 = if_else(genre_NL1 == "Modern", "Hedendaags", genre_NL1)
     ) %>%
     left_join(
@@ -317,6 +320,10 @@ for (seg1 in 1:1) {
     ) %>%
     select(
       uitzending,
+      rang_int,
+      uitzending_start_d,
+      uitzending_start_m,
+      uitzending_tijd,
       titel = titel_NL,
       mr_key = cz_slot_value,
       redactie = redactie_NL,
@@ -325,27 +332,25 @@ for (seg1 in 1:1) {
   
   # + rank it ----
   broadcasts.2 <- broadcasts.I %>%
-    mutate(
-      cz_week_start = if_else(
-        str_detect(uitzending, "do.+13-") |
-          str_detect(uitzending, "do.+14-") &
-          !str_detect(lag(uitzending), "do.+13-"),
-        rank(row_number()),
-        NA_real_
-      ),
-      cz_week_rank = if_else(
-        is.na(cz_week_start),
-        NA_real_,
-        last_rank + rank(cz_week_start)
-      )
+    mutate(cz_week_start = if_else(row_number() == 1
+                                   | str_detect(uitzending, "do.+13-")
+                                   | str_detect(uitzending, "do.+14-") 
+                                     & !str_detect(lag(uitzending), "do.+13-"),
+                                   rank(row_number()),
+                                   NA_real_
+                           ),
+           cz_week_rank = if_else(is.na(cz_week_start), 
+                                  NA_real_,
+                                  last_rank + rank(cz_week_start)
+                          )
     ) %>%
     fill(cz_week_rank) %>%
     mutate(cz_week_banding = cz_week_rank %% 2) %>%
-    select(-c(cz_week_start:cz_week_rank))
+    select(-uitzending, -c(cz_week_start:cz_week_rank))
   
   source("src/fetch_gidslinks.R", encoding = "UTF-8")
   
-  broadcasts.3 <- broadcasts.2 %>%
+  broadcasts.3 <- broadcasts.2 |> 
     left_join(gidslinks) %>%
     mutate(
       titel = paste0(
@@ -356,24 +361,160 @@ for (seg1 in 1:1) {
         "\")"
       )
     ) %>%
-    select(cz_week_banding, uitzending, titel, redactie:redacteur) %>%
+    # select(cz_week_banding, uitzending, titel, redactie:redacteur) %>%
     mutate(
       redactie = case_when(
         redactie == "Oude Muziek" ~ "Oud",
         redactie == "Culturele Raakvlakken" ~ "Raakvlakken",
         redactie == "Nieuwe Muziek" ~ "Hedendaags",
         T ~ redactie
-      )
-    )
+      ),
+      deadline = NA_Date_,
+      binnen = FALSE, 
+      geredigeerd = FALSE,
+      in_gids = FALSE,
+      audio = FALSE,
+      live = FALSE,
+      opmerking = NA_character_,
+      nieuwsbericht = NA_character_
+    ) |> select(wknr = rang_int, dag = uitzending_start_d, datum = uitzending_start_m,
+                tijd = uitzending_tijd, titel, redactie, programmamaker = redacteur, deadline:nieuwsbericht)
   
   # save as .tsv ----
-  write_tsv(
-    broadcasts.3,
-    file = paste0(
-      "C:/Users/nipper/redactieroosters/alle_redacties_",
-      current_run_start,
-      ".tsv"
-    ),
-    na = ""
+  # write_delim(x = broadcasts.3, file = paste0("C:/Users/nipper/redactieroosters/alle_redacties_",
+  #                                             current_run_start,
+  #                                             ".tsv"), delim = "\t")
+
+  # + upload to GD ----
+  tab_name <- format(current_run_start, "redacties_%Y-%m-%d")
+  ss_id <- "1PCBWFkekg9SDJcko_D8u7FNFvIsXpLcLhPsyGhfDdF4"
+  # mark `titel` as formula, to prevent adding a leading quote
+  broadcasts.3$titel <- gs4_formula(broadcasts.3$titel)
+  ss <- sheet_write(ss = ss_id, sheet = tab_name, data = broadcasts.3)
+  
+  # + create checkboxes ----
+  rule_checkbox <- googlesheets4:::new(
+    "DataValidationRule",
+    condition = googlesheets4:::new_BooleanCondition(type = "BOOLEAN"),
+    inputMessage = "Lorem ipsum dolor sit amet",
+    strict = TRUE,
+    showCustomUi = TRUE
   )
+  
+  googlesheets4:::range_add_validation(
+    ss = ss_id, range = paste0(tab_name, "!I2:M"), rule = rule_checkbox
+  )
+  
+  # Get token
+  token <- gs4_token()
+  
+  # --- Step 1: Get sheetId, rowCount, colCount ---
+  meta <- request(
+    paste0("https://sheets.googleapis.com/v4/spreadsheets/", ss_id)
+  ) |>
+    req_auth_bearer_token(token$auth_token$credentials$access_token) |>
+    req_perform() |>
+    resp_body_json()
+  
+  sheetId <- NULL
+  rowCount <- NULL
+  columnCount <- NULL
+  
+  for (sh in meta$sheets) {
+    if (sh$properties$title == tab_name) {
+      sheetId <- sh$properties$sheetId
+      rowCount <- sh$properties$gridProperties$rowCount
+      columnCount <- sh$properties$gridProperties$columnCount
+      break
+    }
+  }
+  if (is.null(sheetId)) stop("Tab not found: ", tab_name)
+  
+  # --- Step 2: Banding request (whole sheet) ---
+  banding_req <- list(
+    addBanding = list(
+      bandedRange = list(
+        range = list(
+          sheetId = sheetId,
+          startRowIndex = 0,
+          endRowIndex = rowCount,
+          startColumnIndex = 0,
+          endColumnIndex = columnCount
+        ),
+        rowProperties = list(
+          firstBandColor = list(red = 0.95, green = 0.95, blue = 0.95),
+          secondBandColor = list(red = 1, green = 1, blue = 1)
+        )
+      )
+    )
+  )
+  
+  # --- Step 3: Conditional formatting rules ---
+  
+  # # Rule 1: if column A == 1, then color column G yellow
+  # rule1 <- list(
+  #   addConditionalFormatRule = list(
+  #     rule = list(
+  #       ranges = list(
+  #         list(
+  #           sheetId = sheetId,
+  #           startColumnIndex = 6, # column G (0=A, 6=G)
+  #           endColumnIndex = 7
+  #         )
+  #       ),
+  #       booleanRule = list(
+  #         condition = list(
+  #           type = "CUSTOM_FORMULA",
+  #           values = list(
+  #             list(userEnteredValue = "$A=1")
+  #           )
+  #         ),
+  #         format = list(
+  #           backgroundColor = list(red = 1, green = 1, blue = 0) # yellow
+  #         )
+  #       )
+  #     ),
+  #     index = 0
+  #   )
+  # )
+  # 
+  # # Rule 2: if column B == 2, then color column K green
+  # rule2 <- list(
+  #   addConditionalFormatRule = list(
+  #     rule = list(
+  #       ranges = list(
+  #         list(
+  #           sheetId = sheetId,
+  #           startColumnIndex = 10, # column K (0=A, 10=K)
+  #           endColumnIndex = 11
+  #         )
+  #       ),
+  #       booleanRule = list(
+  #         condition = list(
+  #           type = "CUSTOM_FORMULA",
+  #           values = list(
+  #             list(userEnteredValue = "$B=2")
+  #           )
+  #         ),
+  #         format = list(
+  #           backgroundColor = list(red = 0, green = 1, blue = 0) # green
+  #         )
+  #       )
+  #     ),
+  #     index = 0
+  #   )
+  # )
+  
+  # --- Step 4: Send batchUpdate (banding + rules) ---
+  req_body <- list(requests = list(banding_req))
+  # req_body <- list(requests = list(banding_req, rule1, rule2))
+  
+  resp <- request(
+    paste0("https://sheets.googleapis.com/v4/spreadsheets/", ss_id, ":batchUpdate")
+  ) |>
+    req_auth_bearer_token(token$auth_token$credentials$access_token) |>
+    req_body_json(req_body, auto_unbox = TRUE) |>
+    req_perform()
+  
+  resp_status(resp)
 }

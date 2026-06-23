@@ -1,7 +1,17 @@
-library(googledrive)
-library(keyring)
-library(readxl)
-library(yaml)
+pacman::p_load(googledrive, googlesheets4, keyring, readxl, yaml)
+
+# say "Hi" to Google
+n_errors <- tryCatch(
+  {
+    drive_auth(email = config$email_from)
+    gs4_auth(token = drive_token())
+    0L
+  },
+  error = function(e1) {
+    flog.error(sprintf("Failed to connect to GoogleDrive: %s", conditionMessage(e1)), name = "redactieroosterlog")
+    return(1L)
+  }
+)
 
 cz_extract_sheet <- function(ss_name, sheet_name) {
   readxl::read_xlsx(ss_name,

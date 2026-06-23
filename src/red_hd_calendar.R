@@ -1,3 +1,4 @@
+# red_hd = redactie hedendaags
 cal_start_ti <- redacteur_carrousel_lst %>% 
   filter(!is.na(start_op)) %>% 
   mutate(start_op = min(start_op)) %>% 
