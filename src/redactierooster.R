@@ -7,7 +7,7 @@ flog.info("= = = = = RedactieRoosters start = = = = =", name = "redactieroosterl
 config <- read_yaml("config.yaml")
 
 # Set first day -------------------------------------------
-current_run_start <- ymd("2026-06-25") # donderdag!
+current_run_start <- ymd("2026-10-01") # donderdag!
 
 # prev run ends with rank (cz_week_banding) ----
 last_rank <- 1
@@ -23,7 +23,7 @@ flog.info("Dit rooster start op %s (MR-versie %s)",
 # Both Thursday parts will separate when the schedule gets 'calendarized'
 
 # Set last day -------------------------------------------
-current_run_stop <-  ymd("2026-10-08") # donderdag!
+current_run_stop <-  ymd("2026-12-31") # donderdag!
 
 source("src/get_google_czdata.R")
 
